@@ -16,7 +16,7 @@
     }
 
     // Public defaults
-    settings.querySelector(`input[id="server[${serverID}][cvars][mp_friendlyfire]"]`).checked = false;
+    settings.querySelector(`input[id="server[${serverID}][cvars][mp_friendlyfire]"]`).checked = true;
     settings.querySelector(`input[id="server[${serverID}][cvars][mp_autoteambalance]"]`).checked = true;
     settings.querySelector(`input[id="server[${serverID}][cvars][mp_afkbomb]"]`).checked = true;
     settings.querySelector(`input[id="server[${serverID}][cvars][afk_kick]"]`).checked = true;
