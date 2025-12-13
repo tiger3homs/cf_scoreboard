@@ -1,5 +1,4 @@
-import fetch from 'node-fetch';
-import JSZip from 'jszip';
+import { exec } from 'child_process';
 import fs from 'fs';
 
 // EDIT THESE MOVIE DETAILS
@@ -7,59 +6,80 @@ const MOVIE_INFO = {
   name: "A Creature Was Stirring",
   year: 2023,
   language: "en", // en, es, fr, de, etc.
-  // Optional: direct download URL if you have one
-  downloadUrl: null
+  quality: "WEB", // WEB, BluRay, HDTV, etc.
+  resolution: "1080p" // 720p, 1080p, 4K, etc. (optional)
 };
 
-async function downloadSubtitle() {
-  const movieName = MOVIE_INFO.name;
-  const year = MOVIE_INFO.year;
-  const lang = MOVIE_INFO.language;
+function createVideoFile(movieName, year, quality, resolution) {
+  const filename = resolution 
+    ? `${movieName.replace(/\s+/g, '.')}.${year}.${resolution}.${quality}.mp4`
+    : `${movieName.replace(/\s+/g, '.')}.${year}.${quality}.mp4`;
   
-  console.log(`Downloading subtitles for: ${movieName} (${year})`);
-  
-  // If direct URL provided, use it
-  if (MOVIE_INFO.downloadUrl) {
-    try {
-      console.log('Using direct download URL...');
-      const response = await fetch(MOVIE_INFO.downloadUrl);
-      
-      if (response.headers.get('content-type')?.includes('zip')) {
-        // Handle ZIP file
-        const buffer = await response.arrayBuffer();
-        const zip = new JSZip();
-        const zipContent = await zip.loadAsync(buffer);
-        
-        for (const [filename, file] of Object.entries(zipContent.files)) {
-          if (!file.dir && filename.endsWith('.srt')) {
-            const content = await file.async('text');
-            fs.writeFileSync(filename, content);
-            console.log(`✓ Downloaded: ${filename}`);
-          }
-        }
+  // Create dummy video file
+  fs.writeFileSync(filename, '');
+  return filename;
+}
+
+function runSubliminal(filename, language) {
+  return new Promise((resolve, reject) => {
+    const cmd = `subliminal download -l ${language} --provider opensubtitles --provider podnapisi "${filename}"`;
+    
+    console.log(`Running: ${cmd}`);
+    
+    const process = exec(cmd, { timeout: 30000 }, (error, stdout, stderr) => {
+      if (error) {
+        console.log('Subliminal failed, trying alternative format...');
+        reject(error);
       } else {
-        // Handle direct SRT file
-        const content = await response.text();
-        const filename = `${movieName.replace(/\s+/g, '.')}.${year}.srt`;
-        fs.writeFileSync(filename, content);
-        console.log(`✓ Downloaded: ${filename}`);
+        console.log(stdout);
+        resolve(stdout);
       }
-      return;
+    });
+    
+    // Kill if stuck
+    setTimeout(() => {
+      process.kill();
+      reject(new Error('Timeout'));
+    }, 30000);
+  });
+}
+
+async function downloadSubtitle() {
+  const { name, year, language, quality, resolution } = MOVIE_INFO;
+  
+  console.log(`Downloading subtitles for: ${name} (${year})`);
+  
+  // Try different filename formats
+  const formats = [
+    createVideoFile(name, year, quality, resolution),
+    createVideoFile(name, year, `${resolution}.WEB-DL.x264`, null),
+    createVideoFile(name, year, "HDTV.x264-LOL", null)
+  ];
+  
+  for (const filename of formats) {
+    try {
+      console.log(`\nTrying format: ${filename}`);
+      await runSubliminal(filename, language);
+      
+      // Check if subtitle was downloaded
+      const srtFile = filename.replace('.mp4', '.srt');
+      if (fs.existsSync(srtFile)) {
+        console.log(`✓ Success! Downloaded: ${srtFile}`);
+        // Clean up video file
+        fs.unlinkSync(filename);
+        return;
+      }
     } catch (error) {
-      console.log('Direct download failed, trying search...');
+      console.log(`Failed with ${filename}`);
+      // Clean up video file
+      if (fs.existsSync(filename)) fs.unlinkSync(filename);
     }
   }
   
-  // Search method (you can add more sources here)
-  console.log('Searching subtitle databases...');
-  console.log(`Movie: ${movieName}`);
-  console.log(`Year: ${year}`);
-  console.log(`Language: ${lang}`);
-  console.log('\nTo download manually:');
+  console.log('\n❌ All methods failed. Try manual download:');
   console.log(`1. Go to https://www.opensubtitles.org/`);
-  console.log(`2. Search for: ${movieName} ${year}`);
-  console.log(`3. Download the ${lang} subtitle`);
-  console.log(`4. Or find direct download URL and update MOVIE_INFO.downloadUrl`);
+  console.log(`2. Search for: ${name} ${year}`);
+  console.log(`3. Download the ${language} subtitle`);
 }
 
 downloadSubtitle().catch(console.error);
