@@ -4,9 +4,9 @@ import path from 'path';
 
 // EDIT THESE MOVIE DETAILS
 const MOVIE_INFO = {
-  name: "A Creature Was Stirring",
+  name: "A Beautiful Life",
   year: 2023,
-  language: "en", // en, es, fr, de, etc.
+  language: "ar", // en, es, fr, de, etc.
   quality: "WEB", // WEB, BluRay, HDTV, etc.
   resolution: "1080p" // 720p, 1080p, 4K, etc. (optional)
 };
@@ -22,9 +22,9 @@ function createVideoFile(movieName, year, quality, resolution, folder) {
   return fullPath;
 }
 
-function runSubliminal(filename, language) {
+function runSubliminal(filename, language, folder) {
   return new Promise((resolve, reject) => {
-    const cmd = `cd subtitles && subliminal download -l ${language} --provider opensubtitles --provider podnapisi "${path.basename(filename)}"`;
+    const cmd = `cd "${folder}" && subliminal download -l ${language} --provider opensubtitles --provider podnapisi "${path.basename(filename)}"`;
     
     console.log(`Running: ${cmd}`);
     
@@ -51,8 +51,12 @@ async function downloadSubtitle() {
   
   console.log(`Downloading subtitles for: ${name} (${year})`);
   
-  // Create subtitles folder
-  const folder = 'subtitles';
+  // Create movie-specific folder
+  const movieFolder = `${name.replace(/\s+/g, '_')}_${year}`;
+  const folder = path.join('subtitles', movieFolder);
+  if (!fs.existsSync('subtitles')) {
+    fs.mkdirSync('subtitles');
+  }
   if (!fs.existsSync(folder)) {
     fs.mkdirSync(folder);
   }
@@ -67,7 +71,7 @@ async function downloadSubtitle() {
   for (const filename of formats) {
     try {
       console.log(`\nTrying format: ${filename}`);
-      await runSubliminal(filename, language);
+      await runSubliminal(filename, language, folder);
       
       // Check if subtitle was downloaded
       const srtFile = filename.replace('.mp4', '.srt');
