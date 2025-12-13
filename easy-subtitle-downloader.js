@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import fs from 'fs';
+import path from 'path';
 
 // EDIT THESE MOVIE DETAILS
 const MOVIE_INFO = {
@@ -10,19 +11,20 @@ const MOVIE_INFO = {
   resolution: "1080p" // 720p, 1080p, 4K, etc. (optional)
 };
 
-function createVideoFile(movieName, year, quality, resolution) {
+function createVideoFile(movieName, year, quality, resolution, folder) {
   const filename = resolution 
     ? `${movieName.replace(/\s+/g, '.')}.${year}.${resolution}.${quality}.mp4`
     : `${movieName.replace(/\s+/g, '.')}.${year}.${quality}.mp4`;
   
+  const fullPath = path.join(folder, filename);
   // Create dummy video file
-  fs.writeFileSync(filename, '');
-  return filename;
+  fs.writeFileSync(fullPath, '');
+  return fullPath;
 }
 
 function runSubliminal(filename, language) {
   return new Promise((resolve, reject) => {
-    const cmd = `subliminal download -l ${language} --provider opensubtitles --provider podnapisi "${filename}"`;
+    const cmd = `cd subtitles && subliminal download -l ${language} --provider opensubtitles --provider podnapisi "${path.basename(filename)}"`;
     
     console.log(`Running: ${cmd}`);
     
@@ -49,11 +51,17 @@ async function downloadSubtitle() {
   
   console.log(`Downloading subtitles for: ${name} (${year})`);
   
+  // Create subtitles folder
+  const folder = 'subtitles';
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder);
+  }
+  
   // Try different filename formats
   const formats = [
-    createVideoFile(name, year, quality, resolution),
-    createVideoFile(name, year, `${resolution}.WEB-DL.x264`, null),
-    createVideoFile(name, year, "HDTV.x264-LOL", null)
+    createVideoFile(name, year, quality, resolution, folder),
+    createVideoFile(name, year, `${resolution}.WEB-DL.x264`, null, folder),
+    createVideoFile(name, year, "HDTV.x264-LOL", null, folder)
   ];
   
   for (const filename of formats) {
