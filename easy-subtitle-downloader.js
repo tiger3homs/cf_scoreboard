@@ -4,9 +4,9 @@ import path from 'path';
 
 // EDIT THESE MOVIE DETAILS
 const MOVIE_INFO = {
-  name: "Calvary",
-  year: 2014,
-  language: "en", // en, es, fr, de, etc.
+  name: "Scrooge: A Christmas Carol",
+  year: 2022,
+  language: "fr", // en, es, fr, de, etc.
   quality: "WEB", // WEB, BluRay, HDTV, etc.
   resolution: "1080p" // 720p, 1080p, 4K, etc. (optional)
 };
